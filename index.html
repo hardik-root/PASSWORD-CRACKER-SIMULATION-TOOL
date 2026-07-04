@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Password Cracking Simulation Tool – Hardik Sharma | CU Online BCA</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a0f; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #050f05; }
+    ::-webkit-scrollbar-thumb { background: #1a4a1a; border-radius: 3px; }
+    input::placeholder { color: #223322; }
+    select option { background: #050f05; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useRef, useEffect, useCallback } = React;
+
+    // ── MD5 pure JS ──────────────────────────────────────────────────────
+    function md5(str) {
+      function safeAdd(x,y){const lsw=(x&0xffff)+(y&0xffff);return(((x>>16)+(y>>16)+(lsw>>16))<<16)|(lsw&0xffff);}
+      function bitRotateLeft(num,cnt){return(num<<cnt)|(num>>>(32-cnt));}
+      function md5cmn(q,a,b,x,s,t){return safeAdd(bitRotateLeft(safeAdd(safeAdd(a,q),safeAdd(x,t)),s),b);}
+      function md5ff(a,b,c,d,x,s,t){return md5cmn((b&c)|((~b)&d),a,b,x,s,t);}
+      function md5gg(a,b,c,d,x,s,t){return md5cmn((b&d)|(c&(~d)),a,b,x,s,t);}
+      function md5hh(a,b,c,d,x,s,t){return md5cmn(b^c^d,a,b,x,s,t);}
+      function md5ii(a,b,c,d,x,s,t){return md5cmn(c^(b|(~d)),a,b,x,s,t);}
+      const utf8=unescape(encodeURIComponent(str));
+      const bytes=[];
+      for(let i=0;i<utf8.length;i++)bytes.push(utf8.charCodeAt(i));
+      bytes.push(0x80);
+      while(bytes.length%64!==56)bytes.push(0);
+      const len=utf8.length*8;
+      bytes.push(len&0xff,(len>>8)&0xff,(len>>16)&0xff,(len>>24)&0xff,0,0,0,0);
+      const words=[];
+      for(let i=0;i<bytes.length;i+=4)words.push(bytes[i]|(bytes[i+1]<<8)|(bytes[i+2]<<16)|(bytes[i+3]<<24));
+      let a=0x67452301,b=0xefcdab89,c=0x98badcfe,d=0x10325476;
+      for(let i=0;i<words.length;i+=16){
+        const[A,B,C,D]=[a,b,c,d];
+        a=md5ff(a,b,c,d,words[i],7,-680876936);d=md5ff(d,a,b,c,words[i+1],12,-389564586);c=md5ff(c,d,a,b,words[i+2],17,606105819);b=md5ff(b,c,d,a,words[i+3],22,-1044525330);
+        a=md5ff(a,b,c,d,words[i+4],7,-176418897);d=md5ff(d,a,b,c,words[i+5],12,1200080426);c=md5ff(c,d,a,b,words[i+6],17,-1473231341);b=md5ff(b,c,d,a,words[i+7],22,-45705983);
+        a=md5ff(a,b,c,d,words[i+8],7,1770035416);d=md5ff(d,a,b,c,words[i+9],12,-1958414417);c=md5ff(c,d,a,b,words[i+10],17,-42063);b=md5ff(b,c,d,a,words[i+11],22,-1990404162);
+        a=md5ff(a,b,c,d,words[i+12],7,1804603682);d=md5ff(d,a,b,c,words[i+13],12,-40341101);c=md5ff(c,d,a,b,words[i+14],17,-1502002290);b=md5ff(b,c,d,a,words[i+15],22,1236535329);
+        a=md5gg(a,b,c,d,words[i+1],5,-165796510);d=md5gg(d,a,b,c,words[i+6],9,-1069501632);c=md5gg(c,d,a,b,words[i+11],14,643717713);b=md5gg(b,c,d,a,words[i],20,-373897302);
+        a=md5gg(a,b,c,d,words[i+5],5,-701558691);d=md5gg(d,a,b,c,words[i+10],9,38016083);c=md5gg(c,d,a,b,words[i+15],14,-660478335);b=md5gg(b,c,d,a,words[i+4],20,-405537848);
+        a=md5gg(a,b,c,d,words[i+9],5,568446438);d=md5gg(d,a,b,c,words[i+14],9,-1019803690);c=md5gg(c,d,a,b,words[i+3],14,-187363961);b=md5gg(b,c,d,a,words[i+8],20,1163531501);
+        a=md5gg(a,b,c,d,words[i+13],5,-1444681467);d=md5gg(d,a,b,c,words[i+2],9,-51403784);c=md5gg(c,d,a,b,words[i+7],14,1735328473);b=md5gg(b,c,d,a,words[i+12],20,-1926607734);
+        a=md5hh(a,b,c,d,words[i+5],4,-378558);d=md5hh(d,a,b,c,words[i+8],11,-2022574463);c=md5hh(c,d,a,b,words[i+11],16,1839030562);b=md5hh(b,c,d,a,words[i+14],23,-35309556);
+        a=md5hh(a,b,c,d,words[i+1],4,-1530992060);d=md5hh(d,a,b,c,words[i+4],11,1272893353);c=md5hh(c,d,a,b,words[i+7],16,-155497632);b=md5hh(b,c,d,a,words[i+10],23,-1094730640);
+        a=md5hh(a,b,c,d,words[i+13],4,681279174);d=md5hh(d,a,b,c,words[i],11,-358537222);c=md5hh(c,d,a,b,words[i+3],16,-722521979);b=md5hh(b,c,d,a,words[i+6],23,76029189);
+        a=md5hh(a,b,c,d,words[i+9],4,-640364487);d=md5hh(d,a,b,c,words[i+12],11,-421815835);c=md5hh(c,d,a,b,words[i+15],16,530742520);b=md5hh(b,c,d,a,words[i+2],23,-995338651);
+        a=md5ii(a,b,c,d,words[i],6,-198630844);d=md5ii(d,a,b,c,words[i+7],10,1126891415);c=md5ii(c,d,a,b,words[i+14],15,-1416354905);b=md5ii(b,c,d,a,words[i+5],21,-57434055);
+        a=md5ii(a,b,c,d,words[i+12],6,1700485571);d=md5ii(d,a,b,c,words[i+3],10,-1894986606);c=md5ii(c,d,a,b,words[i+10],15,-1051523);b=md5ii(b,c,d,a,words[i+1],21,-2054922799);
+        a=md5ii(a,b,c,d,words[i+8],6,1873313359);d=md5ii(d,a,b,c,words[i+15],10,-30611744);c=md5ii(c,d,a,b,words[i+6],15,-1560198380);b=md5ii(b,c,d,a,words[i+13],21,1309151649);
+        a=md5ii(a,b,c,d,words[i+4],6,-145523070);d=md5ii(d,a,b,c,words[i+11],10,-1120210379);c=md5ii(c,d,a,b,words[i+2],15,718787259);b=md5ii(b,c,d,a,words[i+9],21,-343485551);
+        a=safeAdd(a,A);b=safeAdd(b,B);c=safeAdd(c,C);d=safeAdd(d,D);
+      }
+      return[a,b,c,d].map(n=>[n&0xff,(n>>8)&0xff,(n>>16)&0xff,(n>>24)&0xff].map(b=>b.toString(16).padStart(2,"0")).join("")).join("");
+    }
+
+    async function computeHash(str, algo) {
+      if (algo === "MD5") return md5(str);
+      const enc = new TextEncoder().encode(str);
+      const buf = await crypto.subtle.digest(algo, enc);
+      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+    }
+
+    function checkStrength(pw) {
+      const checks = {
+        length8: pw.length >= 8, length12: pw.length >= 12,
+        lower: /[a-z]/.test(pw), upper: /[A-Z]/.test(pw),
+        digit: /\d/.test(pw), special: /[^a-zA-Z0-9]/.test(pw),
+      };
+      const score = Object.values(checks).filter(Boolean).length;
+      const label = score<=2?"Very Weak":score===3?"Weak":score===4?"Moderate":score===5?"Strong":"Very Strong";
+      const color = score<=2?"#ff3b3b":score===3?"#ff8c00":score===4?"#ffd700":score===5?"#7fff00":"#00ff88";
+      return { score, label, color, checks };
+    }
+
+    const DEFAULT_WORDLIST = [
+      "password","123456","password1","admin","letmein","qwerty","monkey",
+      "dragon","master","sunshine","princess","welcome","shadow","superman",
+      "michael","football","charlie","donald","batman","iloveyou","trustno1",
+      "abc123","pass123","secret","hello","test","root","toor","changeme",
+      "p@ssw0rd","P@ssword","Password1","Admin123","Qwerty123"
+    ];
+
+    // ── Sub Components ────────────────────────────────────────────────────
+    function Section({ title, children }) {
+      return (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 10, color: "#336633", letterSpacing: 3, marginBottom: 10, borderBottom: "1px solid #0f2a0f", paddingBottom: 6 }}>{title}</div>
+          {children}
+        </div>
+      );
+    }
+
+    function Inp({ label, value, onChange, placeholder }) {
+      return (
+        <div style={{ marginBottom: 10 }}>
+          <label style={{ fontSize: 11, color: "#669966", display: "block", marginBottom: 4 }}>{label}</label>
+          <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+            style={{ width: "100%", background: "#050f05", border: "1px solid #1a3a1a", color: "#c8f0c8", padding: "8px 10px", fontSize: 12, fontFamily: "inherit", borderRadius: 4, outline: "none" }} />
+        </div>
+      );
+    }
+
+    function Sel({ label, value, onChange, options, labels }) {
+      return (
+        <div style={{ marginBottom: 10 }}>
+          <label style={{ fontSize: 11, color: "#669966", display: "block", marginBottom: 4 }}>{label}</label>
+          <select value={value} onChange={e => onChange(e.target.value)}
+            style={{ width: "100%", background: "#050f05", border: "1px solid #1a3a1a", color: "#c8f0c8", padding: "8px 10px", fontSize: 12, fontFamily: "inherit", borderRadius: 4, outline: "none" }}>
+            {options.map((o,i) => <option key={o} value={o}>{labels ? labels[i] : o}</option>)}
+          </select>
+        </div>
+      );
+    }
+
+    // ── Main App ──────────────────────────────────────────────────────────
+    function App() {
+      const [tab, setTab] = useState("crack");
+      const [hashInput, setHashInput] = useState("");
+      const [hashAlgo, setHashAlgo] = useState("SHA-256");
+      const [attackType, setAttackType] = useState("dictionary");
+      const [wordlist, setWordlist] = useState(DEFAULT_WORDLIST.join("\n"));
+      const [charset, setCharset] = useState("abcdefghijklmnopqrstuvwxyz0123456789");
+      const [maxLen, setMaxLen] = useState(4);
+      const [running, setRunning] = useState(false);
+      const [logs, setLogs] = useState([]);
+      const [result, setResult] = useState(null);
+      const [progress, setProgress] = useState(0);
+      const [attempts, setAttempts] = useState(0);
+      const stopRef = useRef(false);
+      const logsEndRef = useRef(null);
+      const [genPw, setGenPw] = useState("");
+      const [genAlgo, setGenAlgo] = useState("SHA-256");
+      const [genHash, setGenHash] = useState("");
+      const [strengthPw, setStrengthPw] = useState("");
+      const [wlBase, setWlBase] = useState("admin");
+      const [generatedWl, setGeneratedWl] = useState([]);
+      const [copied, setCopied] = useState(false);
+
+      useEffect(() => { logsEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [logs]);
+
+      const addLog = useCallback((msg, type = "info") => {
+        setLogs(prev => [...prev.slice(-300), { msg, type, ts: new Date().toLocaleTimeString() }]);
+      }, []);
+
+      const runCrack = async () => {
+        if (!hashInput.trim()) { addLog("⚠ Please enter a hash to crack.", "warn"); return; }
+        stopRef.current = false;
+        setRunning(true); setResult(null); setProgress(0); setAttempts(0); setLogs([]);
+        addLog(`[*] Starting ${attackType.toUpperCase()} attack`, "sys");
+        addLog(`[*] Algorithm: ${hashAlgo}`, "sys");
+        addLog(`[*] Target: ${hashInput.trim().slice(0,32)}...`, "sys");
+        const target = hashInput.trim().toLowerCase();
+
+        if (attackType === "dictionary") {
+          const words = wordlist.split("\n").map(w => w.trim()).filter(Boolean);
+          addLog(`[*] Wordlist: ${words.length} entries`, "sys");
+          let found = false;
+          for (let i = 0; i < words.length; i++) {
+            if (stopRef.current) { addLog("[!] Stopped by user.", "warn"); break; }
+            const w = words[i];
+            const h = await computeHash(w, hashAlgo);
+            setAttempts(i + 1);
+            setProgress(Math.round(((i + 1) / words.length) * 100));
+            if (i % 5 === 0) addLog(`[~] Trying: ${w}  →  ${h.slice(0, 16)}...`, "try");
+            if (h === target) {
+              addLog(`[✓] CRACKED! Password: "${w}"`, "success");
+              setResult({ cracked: true, password: w, attempts: i + 1 }); found = true; break;
+            }
+            await new Promise(r => setTimeout(r, 0));
+          }
+          if (!found && !stopRef.current) { addLog("[✗] Not found in wordlist.", "fail"); setResult({ cracked: false }); }
+        } else {
+          const chars = charset.split("");
+          addLog(`[*] Charset: ${chars.length} chars, max length: ${maxLen}`, "sys");
+          let found = false, count = 0;
+          outer: for (let len = 1; len <= maxLen; len++) {
+            addLog(`[*] Trying length ${len}...`, "sys");
+            const total = Math.pow(chars.length, len);
+            for (let i = 0; i < total; i++) {
+              if (stopRef.current) { addLog("[!] Stopped by user.", "warn"); break outer; }
+              let candidate = "", n = i;
+              for (let j = 0; j < len; j++) { candidate = chars[n % chars.length] + candidate; n = Math.floor(n / chars.length); }
+              const h = await computeHash(candidate, hashAlgo);
+              count++; setAttempts(count);
+              if (count % 50 === 0) addLog(`[~] Trying: ${candidate}  →  ${h.slice(0, 16)}...`, "try");
+              if (h === target) {
+                addLog(`[✓] CRACKED! Password: "${candidate}"`, "success");
+                setResult({ cracked: true, password: candidate, attempts: count }); found = true; break outer;
+              }
+              if (count % 20 === 0) await new Promise(r => setTimeout(r, 0));
+            }
+          }
+          if (!found && !stopRef.current) { addLog("[✗] Not found within constraints.", "fail"); setResult({ cracked: false }); }
+        }
+        setRunning(false);
+      };
+
+      const generateHash = async () => {
+        if (!genPw) return;
+        const h = await computeHash(genPw, genAlgo);
+        setGenHash(h);
+      };
+
+      const generateWordlist = () => {
+        const base = wlBase.trim(); if (!base) return;
+        const variants = [
+          base, base.toUpperCase(), base.toLowerCase(),
+          base+"123", base+"1", base+"!", base+"@", base+"2024", base+"2023", base+"#",
+          base[0].toUpperCase()+base.slice(1), base[0].toUpperCase()+base.slice(1)+"!",
+          base.split("").reverse().join(""), base+base, "!"+base, base+"123!",
+        ];
+        setGeneratedWl([...new Set(variants)]);
+      };
+
+      const copyHash = () => {
+        if (genHash) { navigator.clipboard?.writeText(genHash); setCopied(true); setTimeout(()=>setCopied(false),2000); }
+      };
+
+      const strengthInfo = strengthPw ? checkStrength(strengthPw) : null;
+      const TABS = ["crack","hash","strength","wordgen"];
+      const TAB_LABELS = { crack:"⚔ Crack", hash:"# Hash", strength:"🛡 Strength", wordgen:"📋 Wordlist" };
+
+      const S = { fontFamily:"'Courier New','Lucida Console',monospace", color:"#c8f0c8" };
+      const btnBase = { border:"none", cursor:"pointer", fontFamily:"inherit", borderRadius:4 };
+
+      return (
+        <div style={{ minHeight:"100vh", background:"#0a0a0f", ...S,
+          backgroundImage:"radial-gradient(ellipse at 20% 20%,rgba(0,255,100,0.04) 0%,transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(0,150,255,0.04) 0%,transparent 60%)" }}>
+
+          {/* Header */}
+          <div style={{ borderBottom:"1px solid #1a3a1a", padding:"16px 24px", display:"flex", alignItems:"center", gap:14, background:"rgba(0,20,0,0.7)" }}>
+            <div style={{ fontSize:26, filter:"drop-shadow(0 0 8px #00ff88)" }}>🔐</div>
+            <div>
+              <div style={{ fontSize:18, fontWeight:"bold", color:"#00ff88", letterSpacing:2, textShadow:"0 0 10px #00ff8866" }}>
+                PASSWORD CRACKING SIMULATION TOOL
+              </div>
+              <div style={{ fontSize:10, color:"#336633", letterSpacing:3 }}>
+                EDUCATIONAL USE ONLY · CU ONLINE BCA PROJECT · HARDIK SHARMA
+              </div>
+            </div>
+            <div style={{ marginLeft:"auto", fontSize:10, color:"#336633", textAlign:"right" }}>
+              <div>v1.0.0</div><div style={{ color:"#00ff4466" }}>● SIMULATION</div>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div style={{ display:"flex", borderBottom:"1px solid #1a3a1a", background:"rgba(0,10,0,0.5)" }}>
+            {TABS.map(t => (
+              <button key={t} onClick={() => setTab(t)} style={{ ...btnBase, padding:"11px 22px", background:"none",
+                borderBottom: tab===t ? "2px solid #00ff88" : "2px solid transparent",
+                color: tab===t ? "#00ff88" : "#446644", fontSize:12, letterSpacing:1,
+                textShadow: tab===t ? "0 0 8px #00ff8866" : "none" }}>{TAB_LABELS[t]}</button>
+            ))}
+          </div>
+
+          <div style={{ padding:"22px 24px", maxWidth:1100, margin:"0 auto" }}>
+
+            {/* ── CRACK ── */}
+            {tab === "crack" && (
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:22 }}>
+                <div>
+                  <Section title="TARGET HASH">
+                    <Inp label="Hash Value" value={hashInput} onChange={setHashInput} placeholder="Paste hash here..." />
+                    <Sel label="Hash Algorithm" value={hashAlgo} onChange={setHashAlgo} options={["MD5","SHA-1","SHA-256","SHA-512"]} />
+                    <Sel label="Attack Type" value={attackType} onChange={setAttackType} options={["dictionary","bruteforce"]} labels={["Dictionary Attack","Brute Force Attack"]} />
+                  </Section>
+
+                  {attackType === "dictionary" && (
+                    <Section title="WORDLIST">
+                      <div style={{ fontSize:11, color:"#446644", marginBottom:6 }}>{wordlist.split("\n").filter(Boolean).length} words loaded</div>
+                      <textarea value={wordlist} onChange={e=>setWordlist(e.target.value)}
+                        style={{ width:"100%", height:150, background:"#050f05", border:"1px solid #1a3a1a", color:"#c8f0c8", padding:8, fontSize:12, fontFamily:"inherit", resize:"vertical", borderRadius:4 }} />
+                    </Section>
+                  )}
+
+                  {attackType === "bruteforce" && (
+                    <Section title="BRUTE FORCE CONFIG">
+                      <Inp label="Character Set" value={charset} onChange={setCharset} />
+                      <div style={{ marginTop:8 }}>
+                        <label style={{ fontSize:11, color:"#669966", display:"block", marginBottom:4 }}>MAX LENGTH: {maxLen}</label>
+                        <input type="range" min={1} max={6} value={maxLen} onChange={e=>setMaxLen(+e.target.value)} style={{ width:"100%", accentColor:"#00ff88" }} />
+                        <div style={{ fontSize:11, color:"#334433", marginTop:4 }}>
+                          ~{[...Array(maxLen)].reduce((a,_,i)=>a+Math.pow(charset.length,i+1),0).toLocaleString()} combinations
+                        </div>
+                      </div>
+                    </Section>
+                  )}
+
+                  <div style={{ display:"flex", gap:10, marginTop:14 }}>
+                    <button onClick={runCrack} disabled={running} style={{ ...btnBase, flex:1, padding:"11px",
+                      background: running ? "#112211" : "linear-gradient(135deg,#00aa44,#007733)",
+                      border:"1px solid #00ff88", color: running ? "#446644" : "#fff",
+                      cursor: running ? "not-allowed" : "pointer", fontSize:13, letterSpacing:2, fontWeight:"bold",
+                      boxShadow: running ? "none" : "0 0 12px #00ff8833" }}>
+                      {running ? "⏳ CRACKING..." : "▶ START ATTACK"}
+                    </button>
+                    {running && (
+                      <button onClick={()=>{ stopRef.current=true; }} style={{ ...btnBase, padding:"11px 18px",
+                        background:"linear-gradient(135deg,#aa0033,#770022)", border:"1px solid #ff3333", color:"#fff", fontSize:13 }}>■ STOP</button>
+                    )}
+                  </div>
+
+                  {result && (
+                    <div style={{ marginTop:14, padding:14, borderRadius:4,
+                      background: result.cracked ? "rgba(0,255,100,0.08)" : "rgba(255,50,50,0.08)",
+                      border:`1px solid ${result.cracked ? "#00ff88" : "#ff3333"}`, textAlign:"center" }}>
+                      {result.cracked ? (
+                        <>
+                          <div style={{ fontSize:18, color:"#00ff88", marginBottom:6 }}>✓ PASSWORD CRACKED</div>
+                          <div style={{ fontSize:22, color:"#fff", fontWeight:"bold", marginBottom:6 }}>"{result.password}"</div>
+                          <div style={{ fontSize:11, color:"#669966" }}>Found after {result.attempts} attempts</div>
+                        </>
+                      ) : (
+                        <div style={{ fontSize:15, color:"#ff4444" }}>✗ PASSWORD NOT FOUND
+                          <br/><span style={{ fontSize:11, color:"#664444" }}>Tried {attempts.toLocaleString()} combinations</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Log terminal */}
+                <div>
+                  <Section title="ATTACK LOG">
+                    {running && (
+                      <div style={{ marginBottom:10 }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#669966", marginBottom:4 }}>
+                          <span>Progress</span><span>{progress}% · {attempts.toLocaleString()} attempts</span>
+                        </div>
+                        <div style={{ height:6, background:"#112211", borderRadius:3, overflow:"hidden" }}>
+                          <div style={{ height:"100%", width:`${progress}%`, background:"linear-gradient(90deg,#00aa44,#00ff88)", transition:"width 0.3s", boxShadow:"0 0 8px #00ff8866" }} />
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ height:460, overflowY:"auto", background:"#030a03", border:"1px solid #0f2a0f", borderRadius:4, padding:10, fontSize:12 }}>
+                      {logs.length === 0 && <div style={{ color:"#1a3a1a" }}>Awaiting attack command...</div>}
+                      {logs.map((l,i) => (
+                        <div key={i} style={{ color: l.type==="success"?"#00ff88":l.type==="fail"?"#ff4444":l.type==="warn"?"#ffaa00":l.type==="sys"?"#44aaff":"#446644", marginBottom:2 }}>
+                          <span style={{ color:"#1a3a1a" }}>[{l.ts}] </span>{l.msg}
+                        </div>
+                      ))}
+                      <div ref={logsEndRef} />
+                    </div>
+                  </Section>
+                </div>
+              </div>
+            )}
+
+            {/* ── HASH ── */}
+            {tab === "hash" && (
+              <div style={{ maxWidth:580 }}>
+                <Section title="HASH GENERATOR">
+                  <div style={{ fontSize:12, color:"#446644", marginBottom:14 }}>Generate hashes from plaintext. Use them as input for the cracker above.</div>
+                  <Inp label="Plaintext Password" value={genPw} onChange={setGenPw} placeholder="Enter any password..." />
+                  <Sel label="Algorithm" value={genAlgo} onChange={setGenAlgo} options={["MD5","SHA-1","SHA-256","SHA-512"]} />
+                  <button onClick={generateHash} style={{ ...btnBase, marginTop:10, padding:"10px 22px",
+                    background:"linear-gradient(135deg,#004488,#002255)", border:"1px solid #0088ff", color:"#88ccff", fontSize:12, letterSpacing:1 }}>
+                    GENERATE HASH
+                  </button>
+                  {genHash && (
+                    <div style={{ marginTop:14, padding:14, background:"#030a0f", border:"1px solid #0a2a4a", borderRadius:4 }}>
+                      <div style={{ fontSize:11, color:"#446688", marginBottom:6 }}>{genAlgo} of "{genPw}":</div>
+                      <div style={{ color:"#44aaff", wordBreak:"break-all", fontSize:13, letterSpacing:1 }}>{genHash}</div>
+                      <button onClick={copyHash} style={{ ...btnBase, marginTop:10, padding:"6px 14px",
+                        background:"none", border:"1px solid #224466", color: copied?"#00ff88":"#446688", fontSize:11 }}>
+                        {copied ? "✓ Copied!" : "Copy Hash"}
+                      </button>
+                    </div>
+                  )}
+                </Section>
+                <Section title="HASH FORMAT REFERENCE">
+                  <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+                    <thead><tr>{["Algorithm","Output Length","Status"].map(h=><th key={h} style={{ textAlign:"left", padding:"6px 8px", borderBottom:"1px solid #1a3a1a", color:"#669966" }}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {[["MD5","32 hex chars","Legacy (insecure)"],["SHA-1","40 hex chars","Deprecated"],["SHA-256","64 hex chars","Widely used"],["SHA-512","128 hex chars","High security"]].map(([a,l,s])=>(
+                        <tr key={a}>
+                          <td style={{ padding:"6px 8px", color:"#44aaff", borderBottom:"1px solid #0a1a0a" }}>{a}</td>
+                          <td style={{ padding:"6px 8px", color:"#c8f0c8", borderBottom:"1px solid #0a1a0a" }}>{l}</td>
+                          <td style={{ padding:"6px 8px", color:"#446644", borderBottom:"1px solid #0a1a0a" }}>{s}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Section>
+              </div>
+            )}
+
+            {/* ── STRENGTH ── */}
+            {tab === "strength" && (
+              <div style={{ maxWidth:580 }}>
+                <Section title="PASSWORD STRENGTH ANALYZER">
+                  <Inp label="Password to Analyze" value={strengthPw} onChange={setStrengthPw} placeholder="Type any password..." />
+                  {strengthInfo && (
+                    <>
+                      <div style={{ margin:"14px 0", padding:14, background:"#030a03", border:`1px solid ${strengthInfo.color}33`, borderRadius:4 }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+                          <span style={{ fontSize:17, color:strengthInfo.color, fontWeight:"bold", textShadow:`0 0 8px ${strengthInfo.color}66` }}>{strengthInfo.label}</span>
+                          <span style={{ fontSize:13, color:"#446644" }}>{strengthInfo.score}/6</span>
+                        </div>
+                        <div style={{ height:8, background:"#112211", borderRadius:4, overflow:"hidden" }}>
+                          <div style={{ height:"100%", width:`${(strengthInfo.score/6)*100}%`, background:strengthInfo.color, transition:"width 0.5s", boxShadow:`0 0 8px ${strengthInfo.color}66` }} />
+                        </div>
+                      </div>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                        {[["≥ 8 characters",strengthInfo.checks.length8],["≥ 12 characters",strengthInfo.checks.length12],
+                          ["Lowercase letters",strengthInfo.checks.lower],["Uppercase letters",strengthInfo.checks.upper],
+                          ["Numbers",strengthInfo.checks.digit],["Special characters",strengthInfo.checks.special]
+                        ].map(([label,pass])=>(
+                          <div key={label} style={{ padding:"8px 10px", background: pass?"rgba(0,255,100,0.06)":"rgba(255,50,50,0.06)",
+                            border:`1px solid ${pass?"#1a4a1a":"#4a1a1a"}`, borderRadius:4, fontSize:12, color: pass?"#00cc66":"#cc3333" }}>
+                            {pass?"✓":"✗"} {label}
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ marginTop:14, padding:12, background:"#050f05", border:"1px solid #1a2a1a", borderRadius:4, fontSize:11, color:"#446644" }}>
+                        <div style={{ color:"#669966", marginBottom:6 }}>ESTIMATED CRACK TIME:</div>
+                        {strengthInfo.score<=2&&<div style={{ color:"#ff4444" }}>Instantly to a few seconds</div>}
+                        {strengthInfo.score===3&&<div style={{ color:"#ff8800" }}>Minutes to hours</div>}
+                        {strengthInfo.score===4&&<div style={{ color:"#ffdd00" }}>Days to weeks</div>}
+                        {strengthInfo.score===5&&<div style={{ color:"#88ff44" }}>Months to years</div>}
+                        {strengthInfo.score===6&&<div style={{ color:"#00ff88" }}>Centuries (practically uncrackable)</div>}
+                      </div>
+                    </>
+                  )}
+                </Section>
+              </div>
+            )}
+
+            {/* ── WORDLIST GEN ── */}
+            {tab === "wordgen" && (
+              <div style={{ maxWidth:680 }}>
+                <Section title="WORDLIST GENERATOR">
+                  <div style={{ fontSize:12, color:"#446644", marginBottom:10 }}>Generate password variants from a base word.</div>
+                  <div style={{ display:"flex", gap:10, alignItems:"flex-end" }}>
+                    <div style={{ flex:1 }}><Inp label="Base Word" value={wlBase} onChange={setWlBase} placeholder="e.g. admin, hardik, company..." /></div>
+                    <button onClick={generateWordlist} style={{ ...btnBase, padding:"10px 18px",
+                      background:"linear-gradient(135deg,#553300,#332200)", border:"1px solid #ffaa00", color:"#ffaa00", fontSize:12, marginBottom:10 }}>GENERATE</button>
+                  </div>
+                  {generatedWl.length > 0 && (
+                    <>
+                      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginTop:12 }}>
+                        {generatedWl.map((w,i)=>(
+                          <div key={i} style={{ padding:"6px 10px", background:"#050f05", border:"1px solid #1a3a0a", borderRadius:3, fontSize:12, color:"#aaddaa" }}>{w}</div>
+                        ))}
+                      </div>
+                      <button onClick={()=>{ setWordlist(generatedWl.join("\n")); setTab("crack"); }} style={{ ...btnBase, marginTop:12, padding:"10px 18px",
+                        background:"linear-gradient(135deg,#003322,#002211)", border:"1px solid #00ff88", color:"#00ff88", fontSize:12 }}>
+                        → LOAD INTO CRACKER
+                      </button>
+                    </>
+                  )}
+                </Section>
+                <Section title="MUTATION RULES APPLIED">
+                  {["Uppercase / Lowercase","Number suffixes (1, 123, 2024)","Symbol suffixes (!, @, #)","Capitalization","Reverse string","Repetition","Prefix symbols"].map((r,i)=>(
+                    <div key={i} style={{ padding:"5px 0", borderBottom:"1px solid #0a1a0a", fontSize:12, color:"#446644" }}>
+                      <span style={{ color:"#00aa44", marginRight:8 }}>▸</span>{r}
+                    </div>
+                  ))}
+                </Section>
+              </div>
+            )}
+          </div>
+
+          <div style={{ borderTop:"1px solid #0a1a0a", padding:"10px 24px", fontSize:10, color:"#1a2a1a", textAlign:"center", letterSpacing:2 }}>
+            FOR EDUCATIONAL PURPOSES ONLY · SIMULATION TOOL · DO NOT USE ON UNAUTHORIZED SYSTEMS
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
