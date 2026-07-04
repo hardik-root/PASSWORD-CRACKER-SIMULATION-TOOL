@@ -11,7 +11,7 @@
 
 **👉 [Click here to open the tool](https://YOUR_USERNAME.github.io/password-cracker/)**
 
-> ⚠️ Replace `YOUR_USERNAME` with your actual GitHub username after deploying.
+> ⚠️ Replace `YOUR_USERNAME` with your actual GitHub username  after deploying.
 
 ---
 
